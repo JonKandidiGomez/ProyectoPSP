@@ -1,6 +1,7 @@
 package Controlador;
 
 import Modelos.Billete;
+import Modelos.Usuario;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.List;
 public class Controlador {
 
     private List<Billete> billetes = new ArrayList<>();
+    private List<Usuario> usuarios = new ArrayList<>();
 
     public Controlador() {
         generarBilletes();
