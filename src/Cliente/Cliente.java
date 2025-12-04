@@ -140,7 +140,7 @@ public class Cliente {
 
                         //4.2 Se recibe mensaje de confirmación
                         byte[] respuesta = (byte[]) ois.readObject();
-                        String res = descifrar(respuesta, claves.getPrivate());
+                        String res = descifrar(respuesta, privada);
                         System.out.println(res);
                         break;
 
@@ -156,12 +156,43 @@ public class Cliente {
                         //5.1 Se envían las credenciales al servidor
                         oos.writeObject(usCif);
                         oos.writeObject(pwdCif);
+
+                        //5.2 Se recibe la respuesta del login
+                        boolean resLogin = ois.readBoolean();
+                        if (resLogin) {
+                            System.out.println("Te has logeado con exito!");
+                            logeado = true;
+                        } else {
+                            System.out.println("Usuario o contraseña incorrectos.");
+                        }
+                        break;
+                    case "comprar billetes":
+                        //6.1 Se recibe el listado de billetes del cliente
+                        byte[] listaCif = (byte[]) ois.readObject();
+                        String lista = descifrar(listaCif, privada);
+                        System.out.println("Elige un billete" + lista);
+
+                        String bill = br.readLine().toUpperCase();
+                        byte[] billCif = cifrar(bill, claveServer);
+                        //Firma digital
+                        Signature dsa = Signature.getInstance("SHA256withDSA");
+
+
+                        //6.2 Se envía la opción elegida al servidor
+                        oos.writeObject(billCif);
+                        //6.3 Se recibe la respuesta del servidor
+                        byte[] respCompra = (byte[]) ois.readObject();
+                        String resp = descifrar(respCompra, privada);
+                        System.out.println(resp);
+                    case "salir":
+                        System.out.println("Cerrando aplicacion...");
+                        break;
+                    default:
+                        System.out.println("No has introducido una opción válida.");
                 }
-
-
             } while (!op.equals("salir"));
-
-
+            ois.close();
+            oos.close();
             cliente.close();
         } catch (IOException e) {
             System.out.println("Error de E/S: " + e);

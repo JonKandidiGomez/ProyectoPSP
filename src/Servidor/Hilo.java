@@ -22,13 +22,13 @@ public class Hilo implements Runnable {
     private final PrivateKey clavePrivada;
     private final Controlador controlador;
 
-    public Hilo(SSLSocket sCliente, KeyPair claves) throws IOException {
+    public Hilo(SSLSocket sCliente, KeyPair claves, Controlador control) throws IOException {
         this.sCliente = sCliente;
         this.ois = new ObjectInputStream(sCliente.getInputStream());
         this.oos = new ObjectOutputStream(sCliente.getOutputStream());
         this.clavePublica = claves.getPublic();
         this.clavePrivada = claves.getPrivate();
-        this.controlador = new Controlador(clavePrivada);
+        this.controlador = control;
     }
 
     @Override
@@ -52,7 +52,7 @@ public class Hilo implements Runnable {
                     byte[] pw = (byte[]) ois.readObject();
 
                     Usuario u = new Usuario(nombre, apell, edad, email, usr, pw);
-                    String mensaje = "";
+                    String mensaje;
                     if (controlador.guardarUsuario(u)) {
                         mensaje = "Usuario registrado";
                     } else {
@@ -61,19 +61,41 @@ public class Hilo implements Runnable {
 
                     byte[] mnsCif = cifrar(mensaje, claveCliente);
 
-                     //4.2 Se envia mensaje de confirmación
+                    //4.2 Se envia mensaje de confirmación
                     oos.writeObject(mnsCif);
                     break;
 
                 case "login":
-                    //5.1
+                    //5.1 Se reciben las credenciales del cliente
                     byte[] usrLogin = (byte[]) ois.readObject();
                     byte[] pwLogin = (byte[]) ois.readObject();
 
-
+                    boolean respuesta = controlador.logearUsuario(usrLogin, pwLogin);
+                    //5.2 Se envía la respuesta del login
+                    oos.writeObject(respuesta);
+                    break;
+                case "comprar billetes":
+                    byte[] listado = cifrar(controlador.mostrarBilletes(), claveCliente);
+                    //6.1 Se envía listado de billetes al cliente
+                    oos.writeObject(listado);
+                    //6.2 Se recibe la opcion elegida del cliente
+                    byte[] billCif = (byte[]) ois.readObject();
+                    String bill = descifrar(billCif, clavePrivada);
+                    boolean compraOk = controlador.comprarBillete(bill);
+                    String mensajeRespuesta;
+                    if (compraOk) {
+                        mensajeRespuesta = "¡Compra realizada con éxito! Billete: " + bill;
+                    } else {
+                        mensajeRespuesta = "Error: El billete ya no está disponible o no existe.";
+                    }
+                    byte[] respCompra = cifrar(mensajeRespuesta, claveCliente);
+                    //6.3 Se envia la respuesta al cliente
+                    oos.writeObject(respCompra);
             }
 
-
+            ois.close();
+            oos.close();
+            sCliente.close();
         } catch (IOException e) {
             System.out.println("Error de E/S");
         } catch (Exception e) {

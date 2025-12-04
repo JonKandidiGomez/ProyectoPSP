@@ -15,9 +15,9 @@ import java.util.List;
 
 public class Controlador {
 
-    private List<Billete> billetes = new ArrayList<>();
-    private List<Usuario> usuarios = new ArrayList<>();
-    private PrivateKey claveServer;
+    private final List<Billete> billetes = new ArrayList<>();
+    private final List<Usuario> usuarios = new ArrayList<>();
+    private final PrivateKey claveServer;
 
     public Controlador(PrivateKey clave) {
         this.claveServer = clave;
@@ -30,12 +30,32 @@ public class Controlador {
         }
     }
 
-    public void comprarBillete(String codigo) {
+    public synchronized String mostrarBilletes() {
+        String listado = "";
+        for (Billete b : billetes) {
+            if (b.isDisponible()) {
+                listado = listado.concat(b.getCodigo() + "\n");
+            }
+        }
+        return listado;
+    }
 
+    public synchronized boolean comprarBillete(String codigo) {
+        for (Billete b : billetes) {
+            if (b.getCodigo().equals(codigo)) {
+                if (b.isDisponible()) {
+                    b.setDisponible(false);
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        return false;
     }
 
     public boolean guardarUsuario(Usuario usuario) {
-        if (usuarioExiste(usuario)) {
+        if (usuarioExiste(usuario.getUsuario())) {
             return false;
         } else {
             usuarios.add(usuario);
@@ -43,12 +63,27 @@ public class Controlador {
         }
     }
 
-    private boolean usuarioExiste(Usuario usuario) {
+    private boolean usuarioExiste(String usuario) {
         boolean res = false;
         for (Usuario u : usuarios) {
-            if (u.getUsuario().equals(usuario.getUsuario())) {
+            if (u.getUsuario().equals(usuario)) {
                 res = true;
                 break;
+            }
+        }
+        return res;
+    }
+
+    public boolean logearUsuario(byte[] usuario, byte[] contraseña) {
+        boolean res = false;
+        String usr = descifrar(usuario, claveServer);
+        String pw = descifrar(contraseña, claveServer);
+        if (usuarioExiste(usr)) {
+            for (Usuario u : usuarios) {
+                if (u.getUsuario().equals(usr)) {
+                    String pw2 = descifrar(u.getContraseña(), claveServer);
+                    return pw.equals(pw2);
+                }
             }
         }
         return res;
@@ -59,7 +94,8 @@ public class Controlador {
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, clave);
             return new String(cipher.doFinal(msg));
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException |
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
+                 IllegalBlockSizeException |
                  BadPaddingException e) {
             System.out.println("Error al descifrar datos: " + e);
         }
