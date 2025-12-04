@@ -1,5 +1,7 @@
 package Cliente;
 
+import Modelos.Usuario;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -8,9 +10,12 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
 import java.security.*;
+import java.sql.SQLOutput;
 
 public class Cliente {
     public static void main(String[] args) {
+        boolean logeado = false;
+
         //Lector de datos desde consola
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
@@ -34,10 +39,10 @@ public class Cliente {
             PublicKey publica = claves.getPublic();
             PrivateKey privada = claves.getPrivate();
 
-            //Se envía la clave publica del cliente al servidor
+            //1. Se envía la clave publica del cliente al servidor
             oos.writeObject(publica);
 
-            //Se recibe la clave pública del servidor
+            //2. Se recibe la clave pública del servidor
             PublicKey claveServer = (PublicKey) ois.readObject();
 
             String op;
@@ -50,47 +55,107 @@ public class Cliente {
                         - Salir""");
                 op = br.readLine().toLowerCase();
 
-                byte[] mensaje = cifrar(op, claveServer);
+                //3. Se envía la opción elegida por el usuario
+                oos.writeObject(op);
 
                 switch (op) {
                     case "registrarme":
-                        oos.writeObject(mensaje);
-                        String nombre;
-                        String apellido;
-                        int edad;
-                        String email;
-                        String usr;
-                        String pw;
+                        String nombre, apellido, edad, email, usr, pw;
+                        byte[] nomCif = null, apeCif = null, edadCif = null, emailCif = null, usrCif = null, pwCif = null;
 
+                        // Se piden los datos al usuario hasta que introduce unos válidos
                         do {
                             System.out.println("Introduce tu nombre: ");
                             nombre = br.readLine();
+                            if (!validarNombre(nombre)) {
+                                System.out.println("El nombre no puede contener caracteres que no sean letras.");
+                                nombre = "";
+                            } else {
+                                nomCif = cifrar(nombre, claveServer);
+                            }
                         } while (nombre.isEmpty());
 
                         do {
                             System.out.println("Introduce tu apellido: ");
                             apellido = br.readLine();
+                            if (!validarApellido(apellido)) {
+                                System.out.println("El apellido no puede contener caracteres que no sean letras.");
+                                apellido = "";
+                            } else {
+                                apeCif = cifrar(nombre, claveServer);
+                            }
                         } while (apellido.isEmpty());
 
                         do {
-                            System.out.println("Introduce tu edad (un numero entero): ");
-                            try {
-                                edad = Integer.parseInt(br.readLine());
-                            } catch (NumberFormatException | IOException e) {
-                                edad = -1;
+                            System.out.println("Introduce tu edad: ");
+                            edad = br.readLine();
+                            if (!validarEdad(edad)) {
+                                System.out.println("La edad debe ser un numero entero");
+                                edad = "";
+                            } else {
+                                edadCif = cifrar(edad, claveServer);
                             }
-                        } while (edad == -1);
+                        } while (edad.isEmpty());
 
                         do {
                             System.out.println("Introduce tu email: ");
                             email = br.readLine();
+                            if (!validarEmail(email)) {
+                                System.out.println("El email debe ser valido.");
+                                email = "";
+                            } else {
+                                emailCif = cifrar(email, claveServer);
+                            }
                         } while (email.isEmpty());
 
                         do {
                             System.out.println("Introduce un nombre de usuario");
                             usr = br.readLine();
+                            if (!validarUsuario(usr)) {
+                                System.out.println("El usuario debe tener entre 8 y 16 caracteres.");
+                                usr = "";
+                            } else {
+                                usrCif = cifrar(usr, claveServer);
+                            }
                         } while (usr.isEmpty());
 
+                        do {
+                            System.out.println("Introduce tu contraseña: ");
+                            pw = br.readLine();
+                            if (!validarContraseña(pw)) {
+                                System.out.println("La contraseña debe tener entre 8 y 16 caracteres.");
+                                pw = "";
+                            } else {
+                                pwCif = cifrar(pw, claveServer);
+                            }
+                        } while (pw.isEmpty());
+
+                        //4.1 Se envían los datos del usuario
+                        oos.writeObject(nomCif);
+                        oos.writeObject(apeCif);
+                        oos.writeObject(edadCif);
+                        oos.writeObject(emailCif);
+                        oos.writeObject(usrCif);
+                        oos.writeObject(pwCif);
+
+                        //4.2 Se recibe mensaje de confirmación
+                        byte[] respuesta = (byte[]) ois.readObject();
+                        String res = descifrar(respuesta, claves.getPrivate());
+                        System.out.println(res);
+                        break;
+
+                    case "login":
+                        System.out.println("Nombre de usuario: ");
+                        String usuario = br.readLine();
+                        System.out.println("Contraseña: ");
+                        String pswd = br.readLine();
+
+                        byte[] usCif = cifrar(usuario, claveServer);
+                        byte[] pwdCif = cifrar(pswd, claveServer);
+
+                        //5.1 Se envían las credenciales al servidor
+                        oos.writeObject(usCif);
+                        oos.writeObject(pwdCif);
                 }
 
 
@@ -142,7 +207,27 @@ public class Cliente {
         return cipher.doFinal(msg.getBytes());
     }
 
-    private String validarNombre(String nombre) {
+    private static boolean validarNombre(String nombre) {
+        return nombre.matches("^[A-Za-z]+$");
+    }
 
+    private static boolean validarApellido(String apellido) {
+        return apellido.matches("^[A-Za-z]+$");
+    }
+
+    private static boolean validarEdad(String edad) {
+        return edad.matches("^[0-9]{1,3}$");
+    }
+
+    private static boolean validarEmail(String email) {
+        return email.matches("^.+@.+[.].+$");
+    }
+
+    private static boolean validarUsuario(String usuario) {
+        return usuario.matches("^[.]{8,17}$");
+    }
+
+    private static boolean validarContraseña(String contraseña) {
+        return contraseña.matches("^[.]{8,17}$");
     }
 }
