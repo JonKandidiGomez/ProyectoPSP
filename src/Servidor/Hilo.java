@@ -81,15 +81,28 @@ public class Hilo implements Runnable {
                     //6.2 Se recibe la opcion elegida del cliente
                     byte[] billCif = (byte[]) ois.readObject();
                     String bill = descifrar(billCif, clavePrivada);
-                    boolean compraOk = controlador.comprarBillete(bill);
-                    String mensajeRespuesta;
-                    if (compraOk) {
-                        mensajeRespuesta = "¡Compra realizada con éxito! Billete: " + bill;
-                    } else {
-                        mensajeRespuesta = "Error: El billete ya no está disponible o no existe.";
+
+                    Signature verificarDsa = Signature.getInstance("SHA256withDSA");
+                    verificarDsa.initVerify(claveCliente);
+                    if (bill != null) {
+                        verificarDsa.update(bill.getBytes());
+                    }
+
+                    //6.3 Se recibe y se comprueba la firma digital del cliente
+                    byte[] firmaCompra = (byte[]) ois.readObject();
+                    boolean check = verificarDsa.verify(firmaCompra);
+
+                    String mensajeRespuesta = "Ha ocurrido algún error durante el proceso de compra";
+                    if (check) {
+                        boolean compraOk = controlador.comprarBillete(bill);
+                        if (compraOk) {
+                            mensajeRespuesta = "¡Compra realizada con éxito! Billete: " + bill;
+                        } else {
+                            mensajeRespuesta = "Error: El billete ya no está disponible o no existe.";
+                        }
                     }
                     byte[] respCompra = cifrar(mensajeRespuesta, claveCliente);
-                    //6.3 Se envia la respuesta al cliente
+                    //6.4 Se envia la respuesta al cliente
                     oos.writeObject(respCompra);
             }
 

@@ -176,11 +176,14 @@ public class Cliente {
                         byte[] billCif = cifrar(bill, claveServer);
                         //Firma digital
                         Signature dsa = Signature.getInstance("SHA256withDSA");
-
-
+                        dsa.initSign(privada);
+                        dsa.update(bill.getBytes());
+                        byte[] firmaCompra = dsa.sign();
                         //6.2 Se envía la opción elegida al servidor
                         oos.writeObject(billCif);
-                        //6.3 Se recibe la respuesta del servidor
+                        //6.3 Se envía la firma digital de la compra
+                        oos.writeObject(firmaCompra);
+                        //6.4Se recibe la respuesta del servidor
                         byte[] respCompra = (byte[]) ois.readObject();
                         String resp = descifrar(respCompra, privada);
                         System.out.println(resp);
