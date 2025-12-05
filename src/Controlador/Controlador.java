@@ -81,6 +81,7 @@ public class Controlador {
         if (usuarioExiste(usr)) {
             for (Usuario u : usuarios) {
                 if (u.getUsuario().equals(usr)) {
+                    System.out.println("Usuario encontrado");
                     String pw2 = descifrar(u.getContraseña(), claveServer);
                     return pw.equals(pw2);
                 }

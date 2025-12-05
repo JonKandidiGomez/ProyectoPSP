@@ -27,7 +27,8 @@ public class Servidor {
 
             while (true) {
                 c = (SSLSocket) servidorSSL.accept();
-                Thread h = new Thread(new Hilo(c, claves));
+                Thread h = new Thread(new Hilo(c, claves, controlador));
+                h.start();
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

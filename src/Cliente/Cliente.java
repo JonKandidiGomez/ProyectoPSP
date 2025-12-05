@@ -145,50 +145,59 @@ public class Cliente {
                         break;
 
                     case "login":
-                        System.out.println("Nombre de usuario: ");
-                        String usuario = br.readLine();
-                        System.out.println("Contraseña: ");
-                        String pswd = br.readLine();
-
-                        byte[] usCif = cifrar(usuario, claveServer);
-                        byte[] pwdCif = cifrar(pswd, claveServer);
-
-                        //5.1 Se envían las credenciales al servidor
-                        oos.writeObject(usCif);
-                        oos.writeObject(pwdCif);
-
-                        //5.2 Se recibe la respuesta del login
-                        boolean resLogin = ois.readBoolean();
-                        if (resLogin) {
-                            System.out.println("Te has logeado con exito!");
-                            logeado = true;
+                        if (logeado) {
+                            System.out.println("Ya estas logeado...");
                         } else {
-                            System.out.println("Usuario o contraseña incorrectos.");
+                            System.out.println("Nombre de usuario: ");
+                            String usuario = br.readLine();
+                            System.out.println("Contraseña: ");
+                            String pswd = br.readLine();
+
+                            byte[] usCif = cifrar(usuario, claveServer);
+                            byte[] pwdCif = cifrar(pswd, claveServer);
+
+                            //5.1 Se envían las credenciales al servidor
+                            oos.writeObject(usCif);
+                            oos.writeObject(pwdCif);
+
+                            //5.2 Se recibe la respuesta del login
+                            boolean resLogin = (boolean) ois.readObject();
+                            if (resLogin) {
+                                System.out.println("Te has logeado con exito!");
+                                logeado = true;
+                            } else {
+                                System.out.println("Usuario o contraseña incorrectos.");
+                            }
                         }
                         break;
                     case "comprar billetes":
-                        //6.1 Se recibe el listado de billetes del cliente
-                        byte[] listaCif = (byte[]) ois.readObject();
-                        String lista = descifrar(listaCif, privada);
-                        System.out.println("Elige un billete" + lista);
+                        if (logeado) {
+                            //6.1 Se recibe el listado de billetes del cliente
+                            byte[] listaCif = (byte[]) ois.readObject();
+                            String lista = descifrar(listaCif, privada);
+                            System.out.println("Elige un billete\n" + lista);
 
-                        String bill = br.readLine().toUpperCase();
-                        byte[] billCif = cifrar(bill, claveServer);
-                        //Firma digital
-                        Signature dsa = Signature.getInstance("SHA256withDSA");
-                        dsa.initSign(privada);
-                        dsa.update(bill.getBytes());
-                        byte[] firmaCompra = dsa.sign();
-                        //6.2 Se envía la opción elegida al servidor
-                        oos.writeObject(billCif);
-                        //6.3 Se envía la firma digital de la compra
-                        oos.writeObject(firmaCompra);
-                        //6.4Se recibe la respuesta del servidor
-                        byte[] respCompra = (byte[]) ois.readObject();
-                        String resp = descifrar(respCompra, privada);
-                        System.out.println(resp);
+                            String bill = br.readLine().toUpperCase();
+                            byte[] billCif = cifrar(bill, claveServer);
+                            //Firma digital
+                            Signature dsa = Signature.getInstance("SHA256withRSA");
+                            dsa.initSign(privada);
+                            dsa.update(bill.getBytes());
+                            byte[] firmaCompra = dsa.sign();
+                            //6.2 Se envía la opción elegida al servidor
+                            oos.writeObject(billCif);
+                            //6.3 Se envía la firma digital de la compra
+                            oos.writeObject(firmaCompra);
+                            //6.4Se recibe la respuesta del servidor
+                            byte[] respCompra = (byte[]) ois.readObject();
+                            String resp = descifrar(respCompra, privada);
+                            System.out.println(resp);
+                        } else {
+                            System.out.println("Tienes que registrarte e iniciar sesión antes");
+                        }
+                        break;
                     case "salir":
-                        System.out.println("Cerrando aplicacion...");
+                        System.out.println("Cerrando aplicación...");
                         break;
                     default:
                         System.out.println("No has introducido una opción válida.");
@@ -258,10 +267,10 @@ public class Cliente {
     }
 
     private static boolean validarUsuario(String usuario) {
-        return usuario.matches("^[.]{8,17}$");
+        return usuario.matches("^.{8,16}$");
     }
 
     private static boolean validarContraseña(String contraseña) {
-        return contraseña.matches("^[.]{8,17}$");
+        return contraseña.matches("^.{8,16}$");
     }
 }
