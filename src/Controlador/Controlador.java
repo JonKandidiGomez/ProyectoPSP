@@ -8,6 +8,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public class Controlador {
         return false;
     }
 
-    public boolean guardarUsuario(Usuario usuario) {
+    public synchronized boolean guardarUsuario(Usuario usuario) {
         if (usuarioExiste(usuario.getUsuario())) {
             return false;
         } else {
@@ -74,16 +75,24 @@ public class Controlador {
         return res;
     }
 
-    public boolean logearUsuario(byte[] usuario, byte[] contraseña) {
+    public synchronized boolean logearUsuario(byte[] usuario, byte[] contraseña) {
         boolean res = false;
         String usr = descifrar(usuario, claveServer);
-        String pw = descifrar(contraseña, claveServer);
+        String pwDec = descifrar(contraseña, claveServer);
+        byte[] pwHash;
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(pwDec.getBytes());
+            pwHash = md.digest();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
         if (usuarioExiste(usr)) {
             for (Usuario u : usuarios) {
                 if (u.getUsuario().equals(usr)) {
                     System.out.println("Usuario encontrado");
-                    String pw2 = descifrar(u.getContraseña(), claveServer);
-                    return pw.equals(pw2);
+                    return toHexadecimal(pwHash).equals(toHexadecimal(u.getContraseña()));
                 }
             }
         }
@@ -101,5 +110,15 @@ public class Controlador {
             System.out.println("Error al descifrar datos: " + e);
         }
         return null;
+    }
+
+    private static String toHexadecimal(byte[] hash) {
+        StringBuilder hex = new StringBuilder();
+        for (byte b : hash) {
+            String h = Integer.toHexString(b & 0xFF);
+            if (h.length() == 1) hex.append("0");
+            hex.append(h);
+        }
+        return hex.toString().toUpperCase();
     }
 }

@@ -54,10 +54,16 @@ public class Hilo implements Runnable {
                         String email = descifrar((byte[]) ois.readObject(), clavePrivada);
                         String usr = descifrar((byte[]) ois.readObject(), clavePrivada);
                         byte[] pw = (byte[]) ois.readObject();
+                        String pwDec = descifrar(pw, clavePrivada);
+
+                        //Hasheo la contraseña para guardarla
+                        MessageDigest md = MessageDigest.getInstance("SHA-256");
+                        md.update(pwDec.getBytes());
+                        byte[] pwHash = md.digest();
 
                         System.out.println(Thread.currentThread().getName() + " envió de datos completado.");
 
-                        Usuario u = new Usuario(nombre, apell, edad, email, usr, pw);
+                        Usuario u = new Usuario(nombre, apell, edad, email, usr, pwHash);
                         String mensaje;
                         if (controlador.guardarUsuario(u)) {
                             mensaje = "Usuario registrado";
