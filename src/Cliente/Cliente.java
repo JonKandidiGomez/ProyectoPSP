@@ -1,7 +1,5 @@
 package Cliente;
 
-import Modelos.Usuario;
-
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -10,7 +8,6 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
 import java.security.*;
-import java.sql.SQLOutput;
 
 public class Cliente {
     public static void main(String[] args) {
