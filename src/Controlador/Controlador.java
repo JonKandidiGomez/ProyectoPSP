@@ -7,10 +7,15 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,11 +46,12 @@ public class Controlador {
         return listado;
     }
 
-    public synchronized boolean comprarBillete(String codigo) {
+    public synchronized boolean comprarBillete(String codigo, String usuario) {
         for (Billete b : billetes) {
             if (b.getCodigo().equals(codigo)) {
                 if (b.isDisponible()) {
                     b.setDisponible(false);
+                    registrarTransaccion(usuario, codigo);
                     return true;
                 } else {
                     return false;
@@ -91,8 +97,10 @@ public class Controlador {
         if (usuarioExiste(usr)) {
             for (Usuario u : usuarios) {
                 if (u.getUsuario().equals(usr)) {
-                    System.out.println("Usuario encontrado");
-                    return toHexadecimal(pwHash).equals(toHexadecimal(u.getContraseña()));
+                    if (toHexadecimal(pwHash).equals(toHexadecimal(u.getContraseña()))) {
+                        res = true;
+                        registrarInicioSesion(usr);
+                    }
                 }
             }
         }
@@ -120,5 +128,33 @@ public class Controlador {
             hex.append(h);
         }
         return hex.toString().toUpperCase();
+    }
+
+    private void registrarInicioSesion(String usuario) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+        String fecha = dtf.format(LocalDateTime.now());
+
+        try (FileWriter fw = new FileWriter("logs.txt", true);
+             PrintWriter pw = new PrintWriter(fw)) {
+
+            pw.println("INICIO DE SESION\nFECHA: " + fecha + " | USUARIO: " + usuario);
+
+        } catch (IOException e) {
+            System.out.println("Error al registrar transacción en el log: " + e.getMessage());
+        }
+    }
+
+    private void registrarTransaccion(String usuario, String codigoBillete) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+        String fecha = dtf.format(LocalDateTime.now());
+
+        try (FileWriter fw = new FileWriter("logs.txt", true);
+             PrintWriter pw = new PrintWriter(fw)) {
+
+            pw.println("COMPRA DE BILLETES\nFECHA: " + fecha + " | USUARIO: " + usuario + " | BILLETE: " + codigoBillete);
+
+        } catch (IOException e) {
+            System.out.println("Error al registrar transacción en el log: " + e.getMessage());
+        }
     }
 }

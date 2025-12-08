@@ -21,6 +21,7 @@ public class Hilo implements Runnable {
     private final PublicKey clavePublica;
     private final PrivateKey clavePrivada;
     private final Controlador controlador;
+    private String usuarioLogeado = null;
 
     public Hilo(SSLSocket sCliente, KeyPair claves, Controlador control) throws IOException {
         this.sCliente = sCliente;
@@ -86,12 +87,18 @@ public class Hilo implements Runnable {
                         byte[] usrLogin = (byte[]) ois.readObject();
                         byte[] pwLogin = (byte[]) ois.readObject();
 
+                        String usuarioDec = descifrar(usrLogin, clavePrivada);
                         boolean respuesta = controlador.logearUsuario(usrLogin, pwLogin);
-                        System.out.println(respuesta);
+
+                        if (respuesta) {
+                            this.usuarioLogeado = usuarioDec;
+                        }
+
                         //5.2 Se envía la respuesta del login
                         oos.writeObject(respuesta);
                         System.out.println("Confirmación de inicio de sesión enviada a " + Thread.currentThread().getName());
                         break;
+
                     case "comprar billetes":
                         byte[] listado = cifrar(controlador.mostrarBilletes(), claveCliente);
                         //6.1 Se envía listado de billetes al cliente
@@ -112,16 +119,25 @@ public class Hilo implements Runnable {
 
                         String mensajeRespuesta = "Ha ocurrido algún error durante el proceso de compra";
                         if (check) {
-                            boolean compraOk = controlador.comprarBillete(bill);
-                            if (compraOk) {
-                                mensajeRespuesta = "¡Compra realizada con éxito! Billete: " + bill;
+                            if (usuarioLogeado != null) {
+                                boolean compraOk = controlador.comprarBillete(bill, usuarioLogeado);
+                                if (compraOk) {
+                                    mensajeRespuesta = "¡Compra realizada con éxito! Billete: " + bill;
+                                } else {
+                                    mensajeRespuesta = "Error: El billete ya no está disponible o no existe.";
+                                }
                             } else {
-                                mensajeRespuesta = "Error: El billete ya no está disponible o no existe.";
+                                mensajeRespuesta = "Error: Usuario no encontrado";
                             }
                         }
                         byte[] respCompra = cifrar(mensajeRespuesta, claveCliente);
                         //6.4 Se envia la respuesta al cliente
                         oos.writeObject(respCompra);
+                        break;
+
+                    case "salir":
+                        System.out.println("Usuario " + Thread.currentThread().getName() + " desconectado.");
+                        break;
                 }
             } while (!op.equals("salir"));
             ois.close();
